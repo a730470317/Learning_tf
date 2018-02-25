@@ -14,7 +14,7 @@ def get_filename():
 print(tf.__version__)
 from tensorflow.examples.tutorials.mnist import input_data
 
-MINIST_DATA_PATH = "../minist_data/";
+MINIST_DATA_PATH = "./minist_data/";
 print(MINIST_DATA_PATH);
 mnist = input_data.read_data_sets(MINIST_DATA_PATH, one_hot=True);
 print("Train:       ", mnist.train.images.shape, mnist.train.labels.shape);
