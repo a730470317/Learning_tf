@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tensorflow.examples.tutorials.mnist import input_data
 from utility import tool_debug as t_debug
+import shutil
 
 
 def get_mnist_data(MINIST_DATA_PATH):
@@ -43,15 +44,39 @@ def feed_dict(is_train):
         k = 1.0
     return {x: xs, y_: ys, keep_prob: k}
 
+
+def vis_conv(V,ix,iy,ch,cy,cx, p = 0) :
+    print(t_debug.get_linenumber(), V.shape)
+    v = tf.reshape(V,(iy,ix,ch))
+    ix += 2
+    iy += 2
+    npad = ((1,1), (1,1), (0,0))
+    print(t_debug.get_linenumber(), v.shape)
+
+    v = tf.pad(v, paddings =npad, mode='constant', constant_values=p)
+    print(t_debug.get_linenumber(), v.shape)
+    v = tf.reshape(v,(iy,ix,cy,cx))
+    print(t_debug.get_linenumber(), v.shape)
+    v = tf.transpose(v,(2,0,3,1)) #cy,iy,cx,ix
+    print(t_debug.get_linenumber(), v.shape)
+    v = tf.reshape(v,(cy*iy,cx*ix))
+    return v
+
 def visualize_conv_layer(lay):
     shape = lay.shape;
-    w_img = tf.reshape(lay, [-1, 28, 28, 1]);
-    print(lay.shape ," -> ", w_img.shape);
+    print(lay.shape)
+    # w_img = lay[]
+    w_img = tf.reshape(lay, [-1, 14, 14, 1]);
+    print(lay.shape, " -> ", w_img.shape);
+    # w_img = vis_conv(lay, 14, 14, 32, 4, 8)
+    # print(lay.shape, " -> ", w_img.shape);
     return w_img
 
+
+log_dir = './logs_cnn'
+shutil.rmtree('./logs_cnn', ignore_errors=True)
 print("tensorflow version is", tf.__version__)
 # print(t_debug.get_filename(), t_debug.get_linenumber());
-
 MINIST_DATA_PATH = "./minist_data/";
 sess = tf.InteractiveSession()
 
@@ -67,7 +92,7 @@ with tf.name_scope('CNN_Net1'):
     h_pool1 = max_pool_2x2(h_conv1)
 
 with tf.name_scope('CNN_Net1_conv'):
-    tf.summary.image("h_pool1",visualize_conv_layer(h_pool1),10)
+    tf.summary.image("h_pool1", visualize_conv_layer(h_pool1), 10)
     print(t_debug.get_filename(), t_debug.get_linenumber());
 
 with tf.name_scope('CNN_Net2'):
@@ -108,39 +133,45 @@ with tf.name_scope('accuracy'):
 
 print(t_debug.get_filename(), t_debug.get_linenumber());
 
-tf.summary.FileWriter("logs_cnn/", sess.graph)
+tf.summary.FileWriter(log_dir, sess.graph)
 
 tf.global_variables_initializer().run();
 
 # sess = tf.Session()
 merged = tf.summary.merge_all()
-train_writer = tf.summary.FileWriter("logs_cnn/train", sess.graph)
-test_writer = tf.summary.FileWriter("logs_cnn/test")
+train_writer = tf.summary.FileWriter(log_dir + '/train', sess.graph)
+test_writer = tf.summary.FileWriter(log_dir + '/test')
 saver = tf.train.Saver()
 # Get Mnist data
 mnist = get_mnist_data(MINIST_DATA_PATH)
 plot_x = []
 plot_y = []
-for i in range(3000):
+for i in range(10000):
     batch = mnist.train.next_batch(100);
     # feed_dict = {x: batch[0], y_: batch[1], keep_prob: 0.5}
-    run_option = tf.RunOptions(trace_level = tf.RunOptions.FULL_TRACE)
+    run_option = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
     run_metadata = tf.RunMetadata()
 
-    summary,_  = sess.run([merged,train_step],feed_dict=feed_dict(1),options=run_option,run_metadata=run_metadata)
+    summary, _ = sess.run([merged, train_step], feed_dict=feed_dict(1), options=run_option, run_metadata=run_metadata)
 
-    train_writer.add_run_metadata(run_metadata,'step%03d'%i)
-    train_writer.add_summary(summary,i)
+    train_writer.add_run_metadata(run_metadata, 'step%03d' % i)
+    train_writer.add_summary(summary, i)
     # saver.save(sess, "logs_cnn/"+"/model.ckpt",i)
     # plot_acc = accuracy.eval(feed_dict=feed_dict(0))
-    if i%10 == 0:
+    if i % 10 == 0:
         summary, plot_acc = sess.run([merged, accuracy], feed_dict=feed_dict(0))
         # summary, plot_acc = sess.run([merged,accuracy],feed_dict={x: batch[0], y_: batch[1], keep_prob: 1.0})
-        test_writer.add_summary(summary,i)
+        test_writer.add_summary(summary, i)
+        print("Inter ", i, ", ALL - accuracy = ", plot_acc);
+
     print("Inter ", i, ", accuracy = ", plot_acc);
 print("===================");
+plot_acc = sess.run(accuracy, feed_dict=feed_dict(0))
+print("Inter ", i, ", ALL - accuracy = ", plot_acc);
+
 train_writer.close()
 test_writer.close()
+
 
 plt.plot(plot_x, plot_y)
 plt.xlabel('train_step')
