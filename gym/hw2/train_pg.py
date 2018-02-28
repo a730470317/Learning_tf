@@ -7,7 +7,7 @@ import os
 import time
 import inspect
 from multiprocessing import Process
-
+from utility import tool_debug as t_debug
 #============================================================================================#
 # Utilities
 #============================================================================================#
@@ -35,6 +35,7 @@ def build_mlp(
 
     with tf.variable_scope(scope):
         # YOUR_CODE_HERE
+        
         pass
 
 def pathlength(path):
@@ -63,7 +64,7 @@ def train_PG(exp_name='',
              n_layers=1,
              size=32
              ):
-
+    print(t_debug.get_filename(), t_debug.get_linenumber())
     start = time.time()
 
     # Configure output directory for logging
@@ -81,9 +82,10 @@ def train_PG(exp_name='',
 
     # Make the gym environment
     env = gym.make(env_name)
-    
+    print(t_debug.get_filename(), t_debug.get_linenumber())
     # Is this env continuous, or discrete?
     discrete = isinstance(env.action_space, gym.spaces.Discrete)
+    print(t_debug.get_filename(), t_debug.get_linenumber())
 
     # Maximum length for episodes
     max_path_length = max_path_length or env.spec.max_episode_steps
@@ -108,7 +110,8 @@ def train_PG(exp_name='',
     # Observation and action sizes
     ob_dim = env.observation_space.shape[0]
     ac_dim = env.action_space.n if discrete else env.action_space.shape[0]
-
+    print("Ob dim :" ,ob_dim, " ac_dim : " ,ac_dim)
+    print(t_debug.get_filename(), t_debug.get_linenumber())
     #========================================================================================#
     #                           ----------SECTION 4----------
     # Placeholders
@@ -117,13 +120,18 @@ def train_PG(exp_name='',
     #========================================================================================#
 
     sy_ob_no = tf.placeholder(shape=[None, ob_dim], name="ob", dtype=tf.float32)
+    print(t_debug.get_filename(), t_debug.get_linenumber())
+    # need invert ??
     if discrete:
-        sy_ac_na = tf.placeholder(shape=[None], name="ac", dtype=tf.int32) 
+        print("Run in discrete mode")
+        sy_ac_na = tf.placeholder(shape=[None], name="ac", dtype=tf.int32)
+        print(t_debug.get_filename(), t_debug.get_linenumber())
     else:
         sy_ac_na = tf.placeholder(shape=[None, ac_dim], name="ac", dtype=tf.float32) 
 
     # Define a placeholder for advantages
-    sy_adv_n = TODO
+    print(t_debug.get_filename(), t_debug.get_linenumber())
+    sy_adv_n = 32
 
 
     #========================================================================================#
@@ -167,9 +175,11 @@ def train_PG(exp_name='',
 
     if discrete:
         # YOUR_CODE_HERE
-        sy_logits_na = TODO
-        sy_sampled_ac = TODO # Hint: Use the tf.multinomial op
-        sy_logprob_n = TODO
+        print(t_debug.get_filename(), t_debug.get_linenumber())
+        sy_logits_na = ac_dim
+        sy_sampled_ac = sy_adv_n # Hint: Use the tf.multinomial op
+        sy_logprob_n = ac_dim
+        print(t_debug.get_filename(), t_debug.get_linenumber())
 
     else:
         # YOUR_CODE_HERE
@@ -184,7 +194,7 @@ def train_PG(exp_name='',
     #                           ----------SECTION 4----------
     # Loss Function and Training Operation
     #========================================================================================#
-
+    print(t_debug.get_filename(), t_debug.get_linenumber())
     loss = TODO # Loss function that we'll differentiate to get the policy gradient.
     update_op = tf.train.AdamOptimizer(learning_rate).minimize(loss)
 
@@ -195,6 +205,7 @@ def train_PG(exp_name='',
     #========================================================================================#
 
     if nn_baseline:
+        print(t_debug.get_filename(), t_debug.get_linenumber())
         baseline_prediction = tf.squeeze(build_mlp(
                                 sy_ob_no, 
                                 1, 
@@ -400,6 +411,7 @@ def train_PG(exp_name='',
 
 
 def main():
+    print (t_debug.get_filename(), t_debug.get_linenumber())
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('env_name', type=str)
@@ -427,11 +439,13 @@ def main():
         os.makedirs(logdir)
 
     max_path_length = args.ep_len if args.ep_len > 0 else None
+    print(t_debug.get_filename(), t_debug.get_linenumber())
 
     for e in range(args.n_experiments):
         seed = args.seed + 10*e
         print('Running experiment with seed %d'%seed)
         def train_func():
+            print(t_debug.get_filename(), t_debug.get_linenumber())
             train_PG(
                 exp_name=args.exp_name,
                 env_name=args.env_name,
