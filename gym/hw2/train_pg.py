@@ -35,8 +35,26 @@ def build_mlp(
 
     with tf.variable_scope(scope):
         # YOUR_CODE_HERE
-        
         pass
+        layer = tf.layers.dense(
+            inputs=input_placeholder,
+            units=size,
+            activation=tf.nn.tanh,  # tanh activation
+            kernel_initializer=tf.random_normal_initializer(mean=0, stddev=0.3),
+            bias_initializer=tf.constant_initializer(0.1),
+            name='fc_4X10'
+        )
+        # fc2
+        all_act = tf.layers.dense(
+            inputs=layer,
+            units=output_size,
+            activation=None,
+            kernel_initializer=tf.random_normal_initializer(mean=0, stddev=0.3),
+            bias_initializer=tf.constant_initializer(0.1),
+            name='fc_10X4'
+        )
+        # all_act_prob = tf.nn.softmax(all_act, name='act_prob')  # use softmax to convert to probability
+    return all_act;
 
 def pathlength(path):
     return len(path["reward"])
@@ -177,7 +195,7 @@ def train_PG(exp_name='',
         # YOUR_CODE_HERE
         print(t_debug.get_filename(), t_debug.get_linenumber())
         sy_logits_na = ac_dim
-        sy_sampled_ac = sy_adv_n # Hint: Use the tf.multinomial op
+        sy_sampled_ac = ac_dim # Hint: Use the tf.multinomial op
         sy_logprob_n = ac_dim
         print(t_debug.get_filename(), t_debug.get_linenumber())
 
@@ -195,7 +213,10 @@ def train_PG(exp_name='',
     # Loss Function and Training Operation
     #========================================================================================#
     print(t_debug.get_filename(), t_debug.get_linenumber())
-    loss = TODO # Loss function that we'll differentiate to get the policy gradient.
+    all_act = build_mlp(sy_ob_no,ac_dim,"mlp");
+    print(t_debug.get_filename(), t_debug.get_linenumber())
+    all_act_prob = tf.nn.softmax(all_act, name='act_prob')  # use softmax to convert to probability
+    loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=all_act, labels=sy_ac_na) # Loss function that we'll differentiate to get the policy gradient.
     update_op = tf.train.AdamOptimizer(learning_rate).minimize(loss)
 
 
@@ -221,8 +242,10 @@ def train_PG(exp_name='',
     #========================================================================================#
     # Tensorflow Engineering: Config, Session, Variable initialization
     #========================================================================================#
+    print(t_debug.get_filename(), t_debug.get_linenumber())
 
     tf_config = tf.ConfigProto(inter_op_parallelism_threads=1, intra_op_parallelism_threads=1) 
+    print(t_debug.get_filename(), t_debug.get_linenumber())
 
     sess = tf.Session(config=tf_config)
     sess.__enter__() # equivalent to `with sess:`
@@ -235,6 +258,7 @@ def train_PG(exp_name='',
     #========================================================================================#
 
     total_timesteps = 0
+    print(t_debug.get_filename(), t_debug.get_linenumber())
 
     for itr in range(n_iter):
         print("********** Iteration %i ************"%itr)
@@ -243,11 +267,14 @@ def train_PG(exp_name='',
         timesteps_this_batch = 0
         paths = []
         while True:
+            print(t_debug.get_filename(), t_debug.get_linenumber())
             ob = env.reset()
             obs, acs, rewards = [], [], []
             animate_this_episode=(len(paths)==0 and (itr % 10 == 0) and animate)
             steps = 0
+            print(t_debug.get_filename(), t_debug.get_linenumber())
             while True:
+                print(t_debug.get_filename(), t_debug.get_linenumber())
                 if animate_this_episode:
                     env.render()
                     time.sleep(0.05)
@@ -258,16 +285,26 @@ def train_PG(exp_name='',
                 ob, rew, done, _ = env.step(ac)
                 rewards.append(rew)
                 steps += 1
+                print(t_debug.get_filename(), t_debug.get_linenumber())
+
                 if done or steps > max_path_length:
+                    print(t_debug.get_filename(), t_debug.get_linenumber())
                     break
+            print(t_debug.get_filename(), t_debug.get_linenumber())
             path = {"observation" : np.array(obs), 
                     "reward" : np.array(rewards), 
                     "action" : np.array(acs)}
+            print(t_debug.get_filename(), t_debug.get_linenumber())
             paths.append(path)
+            print(t_debug.get_filename(), t_debug.get_linenumber())
             timesteps_this_batch += pathlength(path)
+            print(t_debug.get_filename(), t_debug.get_linenumber())
             if timesteps_this_batch > min_timesteps_per_batch:
+                print(t_debug.get_filename(), t_debug.get_linenumber())
                 break
+            print(t_debug.get_filename(), t_debug.get_linenumber())
         total_timesteps += timesteps_this_batch
+        print(t_debug.get_filename(), t_debug.get_linenumber())
 
         # Build arrays for observation, action for the policy gradient update by concatenating 
         # across paths
