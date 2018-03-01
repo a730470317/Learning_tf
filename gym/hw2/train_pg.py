@@ -129,7 +129,6 @@ def train_PG(exp_name='',
     ob_dim = env.observation_space.shape[0]
     ac_dim = env.action_space.n if discrete else env.action_space.shape[0]
     print("Ob dim :" ,ob_dim, " ac_dim : " ,ac_dim)
-    print(t_debug.get_filename(), t_debug.get_linenumber())
     #========================================================================================#
     #                           ----------SECTION 4----------
     # Placeholders
@@ -138,19 +137,17 @@ def train_PG(exp_name='',
     #========================================================================================#
 
     sy_ob_no = tf.placeholder(shape=[None, ob_dim], name="ob", dtype=tf.float32)
-    print(t_debug.get_filename(), t_debug.get_linenumber())
     # need invert ??
     if discrete:
         print("Run in discrete mode")
         sy_ac_na = tf.placeholder(shape=[None], name="ac", dtype=tf.int32)
-        print(t_debug.get_filename(), t_debug.get_linenumber())
     else:
         sy_ac_na = tf.placeholder(shape=[None, ac_dim], name="ac", dtype=tf.float32) 
 
     # Define a placeholder for advantages
-    print(t_debug.get_filename(), t_debug.get_linenumber())
     sy_adv_n = 32
 
+    tf_vt = tf.placeholder(shape=[None], name="actions_value", dtype=tf.float32)
 
     #========================================================================================#
     #                           ----------SECTION 4----------
@@ -190,12 +187,14 @@ def train_PG(exp_name='',
     #      policy network output ops.
     #   
     #========================================================================================#
+    all_act = build_mlp(sy_ob_no, ac_dim, "mlp");
+    all_act_prob = tf.nn.softmax(all_act, name='act_prob')  # use softmax to convert to probability
 
     if discrete:
         # YOUR_CODE_HERE
         print(t_debug.get_filename(), t_debug.get_linenumber())
         sy_logits_na = ac_dim
-        sy_sampled_ac = ac_dim # Hint: Use the tf.multinomial op
+        sy_sampled_ac = tf.multinomial(all_act_prob,1)           # Hint: Use the tf.multinomial op
         sy_logprob_n = ac_dim
         print(t_debug.get_filename(), t_debug.get_linenumber())
 
@@ -213,10 +212,13 @@ def train_PG(exp_name='',
     # Loss Function and Training Operation
     #========================================================================================#
     print(t_debug.get_filename(), t_debug.get_linenumber())
-    all_act = build_mlp(sy_ob_no,ac_dim,"mlp");
+
     print(t_debug.get_filename(), t_debug.get_linenumber())
-    all_act_prob = tf.nn.softmax(all_act, name='act_prob')  # use softmax to convert to probability
-    loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=all_act, labels=sy_ac_na) # Loss function that we'll differentiate to get the policy gradient.
+    # all_act_prob = tf.nn.softmax(all_act, name='act_prob')  # use softmax to convert to probability
+    neg_log_prob = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=all_act,
+                                                                  labels=sy_ac_na)  # this is negative log of chosen action
+
+    loss = tf.reduce_mean(neg_log_prob * tf_vt)  # reward guided loss
     update_op = tf.train.AdamOptimizer(learning_rate).minimize(loss)
 
 
@@ -262,7 +264,6 @@ def train_PG(exp_name='',
 
     for itr in range(n_iter):
         print("********** Iteration %i ************"%itr)
-
         # Collect paths until we have enough timesteps
         timesteps_this_batch = 0
         paths = []
@@ -274,42 +275,41 @@ def train_PG(exp_name='',
             steps = 0
             print(t_debug.get_filename(), t_debug.get_linenumber())
             while True:
-                print(t_debug.get_filename(), t_debug.get_linenumber())
                 if animate_this_episode:
+                # if 1:
                     env.render()
-                    time.sleep(0.05)
+                    # time.sleep(0.0005)
                 obs.append(ob)
                 ac = sess.run(sy_sampled_ac, feed_dict={sy_ob_no : ob[None]})
-                ac = ac[0]
+                ac = ac[0,0]
                 acs.append(ac)
                 ob, rew, done, _ = env.step(ac)
                 rewards.append(rew)
                 steps += 1
-                print(t_debug.get_filename(), t_debug.get_linenumber())
-
                 if done or steps > max_path_length:
                     print(t_debug.get_filename(), t_debug.get_linenumber())
                     break
-            print(t_debug.get_filename(), t_debug.get_linenumber())
-            path = {"observation" : np.array(obs), 
+            path = {"observation" : np.array(obs),
                     "reward" : np.array(rewards), 
                     "action" : np.array(acs)}
-            print(t_debug.get_filename(), t_debug.get_linenumber())
             paths.append(path)
-            print(t_debug.get_filename(), t_debug.get_linenumber())
             timesteps_this_batch += pathlength(path)
-            print(t_debug.get_filename(), t_debug.get_linenumber())
             if timesteps_this_batch > min_timesteps_per_batch:
                 print(t_debug.get_filename(), t_debug.get_linenumber())
                 break
+            print(acs)
+            print(rewards)
             print(t_debug.get_filename(), t_debug.get_linenumber())
         total_timesteps += timesteps_this_batch
         print(t_debug.get_filename(), t_debug.get_linenumber())
 
         # Build arrays for observation, action for the policy gradient update by concatenating 
         # across paths
+        print(t_debug.get_filename(), t_debug.get_linenumber())
         ob_no = np.concatenate([path["observation"] for path in paths])
         ac_na = np.concatenate([path["action"] for path in paths])
+        print(ob_no)
+        print(ac_na)
 
         #====================================================================================#
         #                           ----------SECTION 4----------
@@ -365,7 +365,7 @@ def train_PG(exp_name='',
         #====================================================================================#
 
         # YOUR_CODE_HERE
-        q_n = TODO
+        q_n = np.sum(rewards)
 
         #====================================================================================#
         #                           ----------SECTION 5----------
@@ -428,7 +428,12 @@ def train_PG(exp_name='',
         # and after an update, and then log them below. 
 
         # YOUR_CODE_HERE
-
+        print(rewards)
+        sess.run(update_op, feed_dict={
+            sy_ob_no:np.vstack(ob_no),   # shape=[None, n_obs]
+            sy_ac_na:np.array(ac_na),  # shape=[None, ]
+            tf_vt:np.array(acs)}  # shape=[None, ]
+                 )
 
         # Log diagnostics
         returns = [path["reward"].sum() for path in paths]
@@ -477,7 +482,7 @@ def main():
 
     max_path_length = args.ep_len if args.ep_len > 0 else None
     print(t_debug.get_filename(), t_debug.get_linenumber())
-
+    #跑的多线程，666，调试的时候需要+： -e 1
     for e in range(args.n_experiments):
         seed = args.seed + 10*e
         print('Running experiment with seed %d'%seed)
