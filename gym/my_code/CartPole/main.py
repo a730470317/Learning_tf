@@ -38,31 +38,37 @@ class policy_gradient:
                  observation_size,
                  action_size,
                  learn_rate = 1.0,
-                 reward_decay = 0.99
+                 reward_decay = 0.99,
+                 hidden_units = 10
                  ):
         self.learn_rate = learn_rate
         self.reward_decay = reward_decay
+        self.explore_delta = 1.00
         print("run init function.")
         self.obs_vec = []
         self.rew_vec = []
         self.acs_vec = []
         self.m_observation_size = observation_size
         self.m_action_size = action_size
-        sess = self.build_mlp(10);
+        sess = self.build_mlp(hidden_units);
         tf.summary.FileWriter("log/", sess.graph)
 
     def deploy(self,observation):
         # print("Run deploy, obs = " ,observation)
         # print(observation[np.newaxis, :])
-        if 1:
-            prob_weights = self.sess.run(self.all_action, feed_dict={self.ob_input: observation[np.newaxis, :]})
-            # print(range(prob_weights.shape[1]),' ' ,prob_weights.ravel())
-            act_predict = np.random.choice(range(prob_weights.shape[1]),
-                                  p=prob_weights.ravel())  # select action w.r.t the actions prob
-            # print("wright: " ,prob_weights, "res: " , act_predict)
+        val = np.random.random(1)
+        if(val < self.explore_delta):
+            if 1:
+                prob_weights = self.sess.run(self.all_action, feed_dict={self.ob_input: observation[np.newaxis, :]})
+                # print(range(prob_weights.shape[1]),' ' ,prob_weights.ravel())
+                act_predict = np.random.choice(range(prob_weights.shape[1]),
+                                      p=prob_weights.ravel())  # select action w.r.t the actions prob
+                # print("wright: " ,prob_weights, "res: " , act_predict)
+            else:
+                act_predict = self.sess.run(self.chose_action, feed_dict={self.ob_input: observation[np.newaxis, :]})[0]
+                # print("chose action: ", act_predict)
         else:
-            act_predict = self.sess.run(self.chose_action, feed_dict={self.ob_input: observation[np.newaxis, :]})[0]
-            # print("chose action: ", act_predict)
+            act_predict = np.random.choice(self.m_action_size)
         return  act_predict;
 
     def store(self, observation, action,reward ):
@@ -82,15 +88,18 @@ class policy_gradient:
         discounted_ep_rs /= np.std(discounted_ep_rs)
         return discounted_ep_rs
 
-    def train(self):
-        value_vec = self.compute_value()
-        print(np.vstack(self.obs_vec).shape, "  ", np.array(self.acs_vec).shape,"  ", value_vec.shape)
-        self.sess.run(self.train_step,feed_dict={self.ob_input : np.vstack(self.obs_vec),
-                                                                 self.ac_input : np.array(self.acs_vec),
-                                                                 self.ac_value : value_vec})
+    def clear_cache(self):
         self.obs_vec = []
         self.rew_vec = []
         self.acs_vec = []
+
+    def train(self):
+        value_vec = self.compute_value()
+        # print(np.vstack(self.obs_vec).shape, "  ", np.array(self.acs_vec).shape,"  ", value_vec.shape)
+        self.sess.run(self.train_step,feed_dict={self.ob_input : np.vstack(self.obs_vec),
+                                                                 self.ac_input : np.array(self.acs_vec),
+                                                                 self.ac_value : value_vec})
+        self.clear_cache()
 
 if __name__ == "__main__":
     # print(tf.__version__)
@@ -98,27 +107,37 @@ if __name__ == "__main__":
     env.reset()
     env = env.unwrapped # This is very important, else your env will run 200 times.
     print(env.observation_space.shape, env.action_space.n)
-
+    traject_batch_size =1
     observation, reward, done, info = env.step(env.action_space.sample())  # take a random action
     pg = policy_gradient(observation_size =  env.observation_space.shape[0],
                          action_size = env.action_space.n,
                          learn_rate=0.05,
-                         reward_decay=0.99)
+                         reward_decay=0.90,
+                         hidden_units = 4)
     loop_i =0;
     sum_reward = 0
     run_time = 0
+    trajectory_sample_size = 0
     while (loop_i < 10000):
         if(sum_reward > 1000 ):
+            pg.explore_delta = 1.0
             env.render()
         # observation, reward, done, info = env.step(env.action_space.sample())  # take a random action
         action_take = pg.deploy(observation);
         observation, reward, done, info = env.step(action_take)  # take a random action
+        # onservation = [x, x_dot, theta, theta_dot]
+        # Modify the reward function
+        reward = reward - (abs(observation[0]) + abs(observation[2])*0)
+
         # print([observation, reward, done, info])
         if(done):
+            trajectory_sample_size = trajectory_sample_size+1
             print("Observation: ",observation);
             sum_reward = sum(pg.rew_vec)
             print("loop: " ,loop_i ,"rum_time: ",run_time, " sum reward is: ", sum_reward )
-            pg.train();
+            if(trajectory_sample_size>=traject_batch_size):
+                pg.train();
+                trajectory_sample_size = 0
             env.reset()
             run_time = 0
             loop_i = loop_i +1
