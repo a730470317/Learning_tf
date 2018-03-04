@@ -4,3 +4,6 @@
 [submodule "others/reinforcement-learning"]
 	path = others/MIT_RL/reinforcement-learning
 	url = https://github.com/dennybritz/reinforcement-learning.git
+[submodule "others/Reinforcement-learning-with-tensorflow"]
+	path = others/Morvan
+	url = https://github.com/MorvanZhou/Reinforcement-learning-with-tensorflow.git
