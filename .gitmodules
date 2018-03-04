@@ -1,3 +1,6 @@
 [submodule "Learning_tf_data"]
 	path = Learning_tf_data
 	url = git@github.com:a730470317/Learning_tf_data.git
+[submodule "others/reinforcement-learning"]
+	path = others/reinforcement-learning
+	url = https://github.com/dennybritz/reinforcement-learning.git
