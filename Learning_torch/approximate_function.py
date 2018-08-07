@@ -104,6 +104,7 @@ if __name__ == "__main__":
     av = av.reshape(sample_size, sample_size)
     bv = bv.reshape(sample_size, sample_size)
     y = y.reshape(sample_size, sample_size)
+
     y_predict = net(torch_input_data).data.numpy()
     print(y_predict.shape)
     y_predict = y_predict.reshape(sample_size, sample_size)
