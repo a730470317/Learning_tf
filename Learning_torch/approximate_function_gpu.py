@@ -74,7 +74,7 @@ if __name__ == "__main__":
     # Generate testing data
     if_visualize = 0
     torch.manual_seed(1)  # reproducible
-    bound = 1
+    bound = 1.5
     sample_size = 50
     a = np.linspace(-bound, bound, sample_size)
     b = np.linspace(-bound, bound, sample_size)
@@ -118,7 +118,7 @@ if __name__ == "__main__":
         torch.nn.Linear(n_hidden_per_layer, 1) ).cuda()    # method 2
     print(net)
 
-    optimizer = torch.optim.SGD(net.parameters(), lr=0.1)
+    optimizer = torch.optim.SGD(net.parameters(), lr=0.01)
     # optimizer = torch.optim.Adam(net.parameters(), lr= 0.1,betas=(0.9, 0.99))
     loss_func = torch.nn.MSELoss()
 
@@ -133,16 +133,16 @@ if __name__ == "__main__":
             print('t =', t, " loss", loss)
             if(if_visualize):
                 visualize(av, bv, y, prediction, sample_size)
-        if (t>1000):
-            optimizer = torch.optim.SGD(net.parameters(), lr=0.05)
-        if (t > 2000):
-            optimizer = torch.optim.SGD(net.parameters(), lr=0.01)
-        if (t > 3000):
-            optimizer = torch.optim.SGD(net.parameters(), lr=0.005)
-        if (t > 4000):
-            optimizer = torch.optim.SGD(net.parameters(), lr=0.0025)
-        if (t > 8000):
-            optimizer = torch.optim.SGD(net.parameters(), lr=0.001)
+        # if (t>1000):
+        #     optimizer = torch.optim.SGD(net.parameters(), lr=0.05)
+        # if (t > 2000):
+        #     optimizer = torch.optim.SGD(net.parameters(), lr=0.01)
+        # if (t > 3000):
+        #     optimizer = torch.optim.SGD(net.parameters(), lr=0.005)
+        # if (t > 4000):
+        #     optimizer = torch.optim.SGD(net.parameters(), lr=0.0025)
+        # if (t > 8000):
+        #     optimizer = torch.optim.SGD(net.parameters(), lr=0.001)
 
     visualize(av, bv, y, prediction, sample_size)
     plt.pause(0)

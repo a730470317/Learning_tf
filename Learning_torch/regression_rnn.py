@@ -10,16 +10,27 @@ import matplotlib.pyplot as plt
 class Rnn_net(torch.nn.Module):
     def __init__(self):
         super(Rnn_net, self).__init__()
-        hidden_size = 10
+        hidden_size = 100
+        input_size = 1
+        output_size = 1
+
+        # self.i2h = nn.Linear(input_size + hidden_size, hidden_size)
+        # self.i2o = nn.Linear(input_size + hidden_size, output_size)
+
         self.rnn = torch.nn.RNN(
-            input_size = 1,
+            input_size = input_size,
             hidden_size= hidden_size,
-            num_layers= 2,
+            num_layers= 10,
             batch_first= True,
             )
-        self.out = torch.nn.Linear(hidden_size,1)
+
+        self.out = torch.nn.Linear(hidden_size,output_size)
 
     def forward(self, x, hidden_state):
+        # combined = torch.cat((input, hidden), 1)
+        # hidden_state = self.i2h(combined)
+        # rnn_output = self.i2o(combined)
+
         # print("Run forward")
         rnn_output, hidden_state = self.rnn(x, hidden_state)
 
@@ -32,7 +43,7 @@ if __name__ == "__main__":
 
     Learning_rate = 0.1
 
-    steps = np.linspace(0 , np.pi*2, 20, dtype = np.float32)
+    steps = np.linspace(0 , np.pi*2, 1000, dtype = np.float32)
     # x_np = np.sin(steps)
     # x_np = np.mod(steps, 2*np.pi)
     x_np = np.sin(steps+np.pi)
@@ -44,7 +55,15 @@ if __name__ == "__main__":
     plt.legend(loc = 'best')
     plt.ion()
 
-    rnn_net = Rnn_net().cuda()
+    # rnn_net = Rnn_net().cuda()
+    rnn_net = torch.nn.Sequential(
+        torch.nn.LSTM(input_size= 1,
+                     hidden_size=100,
+                     num_layers=10,
+                     batch_first=True,
+                     ),
+        torch.nn.Linear(100, 1)
+    ).cuda()
     print(rnn_net)
 
     # optimizer = torch.optim.Adam(rnn_net.parameters(), lr = Learning_rate)
@@ -60,11 +79,13 @@ if __name__ == "__main__":
     print(y_torch.shape)
 
     h_state = None  # For initial hidden state (all zeros)
-    max_time = 1000
+    max_time = 100
+
+    rnn_net = torch.load("rnn_net.pkl")
     for t in range(max_time):
         prediction, h_state = rnn_net(x_torch, h_state)
         h_state = h_state.data
-
+        # print(h_state.size())
         loss = loss_func(prediction, y_torch)
         optimizer.zero_grad()
         loss.backward()
@@ -72,17 +93,17 @@ if __name__ == "__main__":
 
         print("time = ", t , " loss = ", loss)
         if(t % (max_time /100) == 0):
-            Learning_rate = Learning_rate*0.90
+            # Learning_rate = Learning_rate*0.90
             # optimizer = torch.optim.Adam(rnn_net.parameters(), lr=Learning_rate)
             optimizer = torch.optim.SGD(rnn_net.parameters(), lr=Learning_rate)
 
-        plt.clf()
-        plt.plot(y_np.flatten(), 'r-', label='target')
-        plt.plot(prediction.data.cpu().numpy().flatten(), 'b-', label='predict')
-        plt.draw()
-        plt.pause(0.1)
+            plt.clf()
+            plt.plot(y_np.flatten(), 'r-', label='target')
+            plt.plot(prediction.data.cpu().numpy().flatten(), 'b-', label='predict')
+            plt.draw()
+            plt.pause(0.1)
 
-
+    torch.save(rnn_net, "rnn_net.pkl")
 
     plt.pause(0)
 
