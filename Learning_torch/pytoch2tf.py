@@ -27,7 +27,7 @@ class Plannning_net_tf:
         self.net_output = None
         self.target_output = None  # For supervised trainning
         self.weighted_val = [4, 2, 1]
-        self.learn_rate = 0.000001 * 0.5
+        self.learn_rate = 0.0000005 * 0.5
 
     def train_loop(self):
         print(self.net_output, self.target_output)
@@ -128,7 +128,7 @@ if __name__ == "__main__":
     input_data, output_data = rapid_trajectory.load_from_file("%s/batch_%d.pkl" % (json_config["data_load_dir"], sample_size))
     torch_input_data = torch.from_numpy(input_data).float()
     torch_output_data = torch.from_numpy(output_data).float()
-    BATCH_SIZE = 100*1000
+    BATCH_SIZE = 10*1000
     torch_dataset = Data.TensorDataset(torch_input_data.cpu(), torch_output_data.cpu())
     loader = Data.DataLoader(
             dataset=torch_dataset,  # torch TensorDataset format
@@ -142,11 +142,11 @@ if __name__ == "__main__":
         for loop_1, (batch_x, batch_y) in enumerate(loader):
             np_data_x = batch_x.data.numpy()
             np_data_y = batch_y.data.numpy()
-            loop_2_times = 1000
+            loop_2_times = 10000
             for loop_2 in range(loop_2_times):
                 tf_net.train_step.run({tf_net.net_input: np_data_x, tf_net.target_output: np_data_y})
                 t = epoch * len(loader) + loop_1 * loop_2_times + loop_2 + 0
-                if(t%1000==0 and t!=0):
+                if(t%10000==0 and t!=0):
                     saver.save(sess, "./tf_net/tf_saver_%d.ckpt"%t)
 
                 if(t%100==0):
